@@ -1,0 +1,4 @@
+lxml==4.9.3
+numpy==1.26.2
+opencv-python==4.8.1.78
+psutil==5.9.6
