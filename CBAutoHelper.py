@@ -279,24 +279,65 @@ class LDPlayer:
         print(self.AdbLd("shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download"))
         print(self.AdbLd("shell am broadcast -a android.intent.action.MEDIA_MOUNTED -d file:///sdcard/Download"))
     def ScreenCapture(self):
-        if not os.path.exists("resources"): os.mkdir("resources")
-        path = "\"\"%s\"\""%os.path.join(os.getcwd(), f"resources\\screenshot_{self.NameOrId}.png")
-        self.AdbLd(f"shell screencap /sdcard/Download/1_screenshot_{self.NameOrId}.png")
-        self.AdbLd(f"pull /sdcard/Download/1_screenshot_{self.NameOrId}.png {path}")
+        # tạo folder nếu chưa có
+        if not os.path.exists("resources"):
+            os.mkdir("resources")
+
+        # file local (không bao dấu "")
+        local_path = os.path.join(os.getcwd(), f"resources/screenshot_{self.NameOrId}.png")
+
+        # path bên trong LDPlayer (nên để vào /sdcard/Pictures)
+        remote_path = f"/sdcard/Pictures/screenshot_{self.NameOrId}.png"
+
+        # chụp màn hình
+        self.AdbLd(f"shell screencap -p {remote_path}")
+
+        # kéo file về
+        self.AdbLd(f"pull {remote_path} \"{local_path}\"")
+
+        # kiểm tra file hợp lệ
+        if not os.path.exists(local_path) or os.path.getsize(local_path) == 0:
+            print("[ERROR] Screenshot failed:", local_path)
+            return None
+
+        return local_path
         return path.replace('"', '')
     def FindImg(self, target_pic_name, where: float=0.8):
+        # Đọc ảnh mẫu
         img = cv2.imread(target_pic_name)
-        img2 = cv2.imread(self.ScreenCapture())
-        w, h = img.shape[1], img.shape[0]
-        result = cv2.matchTemplate(img, img2, cv2.TM_CCOEFF_NORMED) 
-        location = numpy.where(result >= where)
+        if img is None:
+            print(f"[ERROR] Không đọc được ảnh mẫu: {target_pic_name}")
+            return False, False
+
+        # Chụp màn hình và đọc lại
+        screenshot_path = self.ScreenCapture()
+        img2 = cv2.imread(screenshot_path)
+        if img2 is None:
+            print(f"[ERROR] Không đọc được ảnh màn hình: {screenshot_path}")
+            return False, False
+
+        # Chuyển cả 2 ảnh về GRAY để tránh mismatch kênh
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img2_gray = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+        # Match Template
+        try:
+            result = cv2.matchTemplate(img_gray, img2_gray, cv2.TM_CCOEFF_NORMED)
+        except Exception as e:
+            print("Lỗi matchTemplate:", e)
+            return False, False
+
+        # Lọc kết quả
+        w, h = img_gray.shape[1], img_gray.shape[0]
+        location = np.where(result >= where)
         data = list(zip(*location[::-1]))
-        is_match = len(data) > 0
-        if is_match:
-            x, y = data[0][0], data[0][1]  
-            return x + int(w/2), y + int(h/2)
+
+        if len(data) > 0:
+            x, y = data[0]
+            return x + w // 2, y + h // 2
         else:
             return False, False
+
     def TapImageSrc(self, src: bytes, click: bool=True):
         return self.TapImagePath(self.ScreenCapture(), src, click)
     def TapImagePath(self, bg, src: bytes, click=True):
