@@ -1,8 +1,13 @@
 from CBAutoHelper import CheckNode, LDPlayer
 import time
 import threading
-ld_path = r'E:\LDPlayer\LDPlayer3.0'
-img_path = r'.\img\screenshot_0.png'
+import os
+
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+
+ld_path = r'I:\LDPlayer\LDPlayer3'
+img_path = os.path.join(BASE, "img", "screenshot_0.png")
 game_package = 'com.moonactive.coinmaster'
 
 
@@ -28,8 +33,8 @@ def run_vip(device):
         start_time = time.time()
         while time.time() - start_time < 30:
             img = ld.FindImg(img_path)
-            # print(img)
-            if img[0] == 450:
+            #print(img)
+            if img[0] == 540:
                 time.sleep(3)
                 break
         ld.StopApp(game_package)
